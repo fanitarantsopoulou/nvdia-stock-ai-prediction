@@ -1,21 +1,26 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue' // Προστέθηκε το onUnmounted
+import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, Filler } from 'chart.js'
 
+// Register Chart.js components
 ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, Filler)
 
+// Reactive state variables
 const prediction = ref(null)
 const chartData = ref(null)
 const loading = ref(true)
 const logs = ref([])
 
+// Utility function to add logs to the terminal UI
 const addLog = (msg) => {
   logs.value.unshift(`[${new Date().toLocaleTimeString()}] ${msg}`)
+  // Keep only the latest 8 logs to prevent UI overflow
   if (logs.value.length > 8) logs.value.pop()
 }
 
+// Main function to fetch data and construct the chart
 const fetchData = async () => {
   loading.value = true;
   addLog("INITIALIZING NEURAL_CORE...");
@@ -23,7 +28,7 @@ const fetchData = async () => {
   try {
     const res = await axios.get('http://127.0.0.1:8000/predict');
     
-    // Έλεγχος αν τα δεδομένα είναι έγκυρα
+    // Safety check: Ensure the API returned valid data
     if (!res.data || !res.data.history_times || res.data.history_times.length === 0) {
       throw new Error("Empty data received from API");
     }
@@ -33,41 +38,56 @@ const fetchData = async () => {
     addLog(`SENTIMENT_SCORE: ${res.data.sentiment_score}`);
     addLog("RUNNING LSTM_INFERENCE...");
 
-    // 1. Παίρνουμε τα έτοιμα strings ("HH:MM") απευθείας από το backend
+    // 1. Fetch historical time labels as plain strings ("HH:MM") from the backend
     const historicalLabels = res.data.history_times;
     
-    // 2. Υπολογισμός Forecast Label (προσθέτουμε 1 ώρα στο τελευταίο label)
-    const lastTimeStr = historicalLabels[historicalLabels.length - 1]; 
-    const [hours, minutes] = lastTimeStr.split(':').map(Number);
+    // 2. Calculate the Forecast Label manually without using Date objects
+    // This prevents "Invalid Date" errors and timezone mismatch issues
+    // 2. Υπολογισμός Forecast Label
+    const lastTimeStr = historicalLabels[historicalLabels.length - 1]; // π.χ. "THU 15:30"
+    
+    // Κόβουμε μόνο τους 5 τελευταίους χαρακτήρες για να πάρουμε το "15:30"
+    const timePart = lastTimeStr.slice(-5); 
+    const [hours, minutes] = timePart.split(':').map(Number);
+    
     const nextHour = (hours + 1) % 24;
-    const forecastLabel = `${nextHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} >> PRED`;
+    const forecastLabel = `PRED >> ${nextHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 
-    // 3. Χτίσιμο του Chart Data
+    // 3. Construct the Chart configuration
     chartData.value = {
       labels: [...historicalLabels, forecastLabel],
       datasets: [{
         label: 'PRICE_FLUX',
-        // Δυναμικό Gradient ανάλογα με την κατεύθυνση (UP/DOWN)
+        
+        // Dynamic Gradient Background (Green for UP, Red for DOWN)
         backgroundColor: (context) => {
           const chart = context.chart;
-          const {ctx, chartArea} = chart;
-          if (!chartArea) return null;
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return null; // Prevents crash during initial render
+          
           const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
           gradient.addColorStop(0, res.data.direction === 'UP' ? 'rgba(0, 255, 101, 0.3)' : 'rgba(255, 0, 60, 0.3)');
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           return gradient;
         },
+        
+        // Dynamic Line Color
         borderColor: res.data.direction === 'UP' ? '#00ff41' : '#ff003c',
-        // Συνδυάζουμε το ιστορικό με την πρόβλεψη σε μια ενιαία γραμμή
+        
+        // Merge historical prices with the predicted price
         data: [...res.data.history, res.data.predicted_price],
         fill: true,
-        tension: 0.3,
+        tension: 0.3, // Curve smoothness
         borderWidth: 2,
-        pointBackgroundColor: '#fff',
-        // Εμφάνιση κύκλου ΜΟΝΟ στο σημείο της πρόβλεψης
+        
+        // --- Prediction Point Styling ---
+        // Only display a point for the final prediction (the last element)
         pointRadius: (context) => context.dataIndex === res.data.history.length ? 6 : 0,
         pointHoverRadius: 8,
-        // Διακεκομμένη γραμμή (dashed) μόνο για το τελευταίο κομμάτι της πρόβλεψης
+        pointBackgroundColor: '#fff',
+        
+        // --- Prediction Segment Styling ---
+        // Make the line dashed only for the segment connecting the present to the future prediction
         segment: {
           borderDash: (context) => context.p1DataIndex === res.data.history.length ? [5, 5] : [],
         }
@@ -79,19 +99,21 @@ const fetchData = async () => {
   } catch (e) {
     console.error("Critical API Error:", e);
     addLog("ERR: CONNECTION_TERMINATED");
-    // Fallback labels για να μην σπάσει το UI
+    // Fallback: Clear chart data to prevent UI breaks
     chartData.value = null;
   } finally {
     loading.value = false;
   }
 };
 
+// Lifecycle hooks
 onMounted(() => {
   fetchData();
-  // Auto-refresh interval
+  
+  // Auto-refresh the dashboard every 5 minutes (300,000 ms)
   const interval = setInterval(fetchData, 300000); 
   
-  // Clean up interval on component destroy
+  // Memory management: Clear the interval when the component is unmounted
   onUnmounted(() => {
     clearInterval(interval);
   });
@@ -176,7 +198,10 @@ onMounted(() => {
                   y: { grid: { color: 'rgba(0, 255, 65, 0.05)' }, ticks: { color: 'rgba(0, 255, 65, 0.7)', font: { size: 10, family: 'monospace' } } },
                   x: { grid: { display: false }, ticks: { color: 'rgba(0, 255, 65, 0.7)', font: { size: 10, family: 'monospace' } } }
                 },
-                plugins: { legend: { display: false }, tooltip: { backgroundColor: '#000', borderColor: '#00ff41', borderWidth: 1, titleFont: { family: 'monospace' }, bodyFont: { family: 'monospace' } } }
+                plugins: { 
+                  legend: { display: false }, 
+                  tooltip: { backgroundColor: '#000', borderColor: '#00ff41', borderWidth: 1, titleFont: { family: 'monospace' }, bodyFont: { family: 'monospace' } } 
+                }
               }" />
             </div>
           </div>
@@ -191,7 +216,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Scrollbar Styling for Logs */
+/* Custom Cyberpunk Scrollbar for the terminal logs */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
@@ -202,5 +227,7 @@ onMounted(() => {
   background: #00ff41;
 }
 
-/* Background & Scanlines logic remains same as per global style */
+/* Note: .tech-bg and .scanlines global styles are assumed to be 
+defined in your global CSS or higher up in the component tree.
+*/
 </style>
