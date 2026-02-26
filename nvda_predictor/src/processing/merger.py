@@ -5,9 +5,9 @@ import sys
 # Append root path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.ingestion.market_api import fetch_market_data
-from src.ingestion.news_api import fetch_news_data
-from src.processing.sentiment import compute_sentiment
+from ingestion.market_api import fetch_market_data
+from ingestion.news_api import fetch_news_data
+from processing.sentiment import compute_sentiment
 
 def merge_data() -> pd.DataFrame:
     print("[*] Starting data merge process...")
