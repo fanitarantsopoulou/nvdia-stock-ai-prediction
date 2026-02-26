@@ -1,3 +1,6 @@
 yfinance
 pandas
 python-dotenv
+requests
+transformers
+torch
