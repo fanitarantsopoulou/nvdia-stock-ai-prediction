@@ -4,3 +4,5 @@ python-dotenv
 requests
 transformers
 torch
+fastapi
+uvicorn

@@ -47,16 +47,22 @@ def predict_next_hour():
         prediction_scaled = model(X_input).item()
 
     # Inverse Scale
-    actual_prediction = prediction_scaled * (scaler_max[0] - scaler_min[0]) + scaler_min[0]
-    current_price = df['Close'].iloc[-1]
-    diff = actual_prediction - current_price
-    direction = "UP 🚀" if diff > 0 else "DOWN 📉"
+    actual_prediction = float(prediction_scaled * (scaler_max[0] - scaler_min[0]) + scaler_min[0])
+    current_price = float(df['Close'].iloc[-1])
+    diff = float(actual_prediction - current_price)
+    direction = "UP" if diff > 0 else "DOWN"
+    sentiment = float(df['sentiment_score'].iloc[-1])
 
-    print("\n" + "="*40)
-    print(f"CURRENT NVDA PRICE: ${current_price:.2f}")
-    print(f"AI FORECAST (1H):  ${actual_prediction:.2f}")
-    print(f"SIGNAL:            {direction} ({diff:+.2f})")
-    print("="*40 + "\n")
+    return {
+        "ticker": "NVDA",
+        "current_price": round(current_price, 2),
+        "predicted_price": round(actual_prediction, 2),
+        "difference": round(diff, 2),
+        "direction": direction,
+        "sentiment_score": round(sentiment, 2),
+        "status": "success"
+    }
 
 if __name__ == "__main__":
-    predict_next_hour()
+    result = predict_next_hour()
+    print(result)
