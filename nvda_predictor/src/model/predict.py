@@ -18,6 +18,8 @@ def predict_next_hour():
     if len(df) < SEQ_LENGTH:
         print(f"[!] Not enough data. Need {SEQ_LENGTH} hours.")
         return
+    
+    history_prices = df['Close'].tail(10).tolist()
 
     # Prepare features
     features = df[['Close', 'sentiment_score']].tail(SEQ_LENGTH).values
@@ -60,6 +62,7 @@ def predict_next_hour():
         "difference": round(diff, 2),
         "direction": direction,
         "sentiment_score": round(sentiment, 2),
+        "history": [round(p, 2) for p in history_prices],
         "status": "success"
     }
 

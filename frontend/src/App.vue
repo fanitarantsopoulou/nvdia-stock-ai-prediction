@@ -14,15 +14,19 @@ const fetchData = async () => {
     const res = await axios.get('http://127.0.0.1:8000/predict')
     prediction.value = res.data
     
-    // Mocking some history for the chart (In real life, get this from API)
+    // Χρησιμοποιούμε το πραγματικό ιστορικό από το backend
+    const historicalLabels = res.data.history.map((_, i) => `-${10 - i}h`)
+    
     chartData.value = {
-      labels: ['-5h', '-4h', '-3h', '-2h', '-1h', 'Now', 'Forecast'],
+      labels: [...historicalLabels, 'Forecast'],
       datasets: [{
         label: 'NVDA Price ($)',
         backgroundColor: '#10b981',
         borderColor: '#10b981',
-        data: [192, 194, 193, 195, 194, res.data.current_price, res.data.predicted_price],
-        stepped: false,
+        // Ενώνουμε το ιστορικό με την πρόβλεψη
+        data: [...res.data.history, res.data.predicted_price],
+        pointRadius: (context) => context.dataIndex === res.data.history.length ? 6 : 2, // Bigger point for forecast
+        borderDash: (context) => context.dataIndex === res.data.history.length ? [5, 5] : [], // Dashed line for forecast
       }]
     }
   } catch (e) { console.error(e) }
