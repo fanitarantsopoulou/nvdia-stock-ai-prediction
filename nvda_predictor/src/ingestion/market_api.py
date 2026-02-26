@@ -5,7 +5,7 @@ import sys
 
 # Add the root directory to the path for imports to work
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from nvda_predictor.src.config import TICKER, HISTORY_PERIOD, TIME_INTERVAL
+from config import TICKER, HISTORY_PERIOD, TIME_INTERVAL
 
 def fetch_market_data(ticker: str = TICKER, period: str = HISTORY_PERIOD, interval: str = TIME_INTERVAL) -> pd.DataFrame:
     """

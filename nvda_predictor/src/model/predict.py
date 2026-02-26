@@ -9,8 +9,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from src.processing.merger import merge_data
-from src.model.train_lstm import StockPredictorLSTM, SEQ_LENGTH, HIDDEN_SIZE, NUM_LAYERS
+from processing.merger import merge_data
+from model.train_lstm import StockPredictorLSTM, SEQ_LENGTH, HIDDEN_SIZE, NUM_LAYERS
 
 def predict_next_hour():
     print("[*] Gathering latest data for prediction...")

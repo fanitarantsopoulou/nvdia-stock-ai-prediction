@@ -6,7 +6,7 @@ import sys
 
 # Add the root directory to the path for imports to work
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from nvda_predictor.src.config import NEWS_API_KEY, TICKER
+from config import NEWS_API_KEY, TICKER
 
 def fetch_news_data(query: str = "NVIDIA OR NVDA OR TSMC OR Blackwell", days_back: int = 7) -> pd.DataFrame:
     """
