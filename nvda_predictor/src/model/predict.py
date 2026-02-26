@@ -20,6 +20,7 @@ def predict_next_hour():
         return
     
     history_prices = df['Close'].tail(10).tolist()
+    history_times = df.index[-10:].strftime('%Y-%m-%d %H:%M').tolist()
 
     # Prepare features
     features = df[['Close', 'sentiment_score']].tail(SEQ_LENGTH).values
@@ -63,6 +64,7 @@ def predict_next_hour():
         "direction": direction,
         "sentiment_score": round(sentiment, 2),
         "history": [round(p, 2) for p in history_prices],
+        "history_times": history_times,
         "status": "success"
     }
 
