@@ -4,6 +4,7 @@ import os
 import sys
 import yfinance as yf
 import pytz
+from datetime import datetime, timedelta
 
 # Setup paths
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -13,6 +14,44 @@ if PROJECT_ROOT not in sys.path:
 
 from processing.merger import merge_data
 from model.train_lstm import StockPredictorLSTM, SEQ_LENGTH, HIDDEN_SIZE, NUM_LAYERS
+
+
+def get_market_info():
+    """Επιστρέφει το Market Status και τον επόμενο έγκυρο χρόνο πρόβλεψης"""
+    ny_tz = pytz.timezone('America/New_York')
+    now = datetime.now(ny_tz)
+
+    market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
+    market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+    pre_market = now.replace(hour=4, minute=0, second=0, microsecond=0)
+    after_hours = now.replace(hour=20, minute=0, second=0, microsecond=0)
+
+    # 1. Weekends
+    if now.weekday() >= 5: 
+        days_ahead = 7 - now.weekday() # Βρίσκει πόσες μέρες μένουν για Δευτέρα
+        next_open = (now + timedelta(days=days_ahead)).replace(hour=9, minute=30)
+        return "CLOSED_WEEKEND", next_open.strftime('%a %H:%M').upper()
+
+    # 2. Daytime before pre-market, or after after-hours (fully closed)
+    if now < pre_market:
+        return "CLOSED", market_open.strftime('%a %H:%M').upper()
+    elif pre_market <= now < market_open:
+        return "PRE_MARKET", market_open.strftime('%a %H:%M').upper()
+        
+    # 3. Market Open (Calculates +1 hour, caps at market close)
+    elif market_open <= now < market_close:
+        next_pred = now + timedelta(hours=1)
+        if next_pred > market_close:
+            next_pred = market_close
+        return "MARKET_OPEN", next_pred.strftime('%a %H:%M').upper()
+        
+    # 4. After market close (After-Hours or fully closed)
+    else:
+        days_ahead = 3 if now.weekday() == 4 else 1 # If Friday -> go to Monday, else next day
+        next_open = (now + timedelta(days=days_ahead)).replace(hour=9, minute=30)
+        status = "AFTER_HOURS" if now < after_hours else "CLOSED"
+        return status, next_open.strftime('%a %H:%M').upper()
+
 
 def predict_next_hour():
     print("[*] Gathering latest data for prediction...")
@@ -26,8 +65,6 @@ def predict_next_hour():
     df = df.sort_index()
 
     # --- 2. BULLETPROOF DATA SLICE ---
-    # We take EXACTLY the last 10 points. No filtering by date.
-    # This guarantees a continuous, unbroken line of 10 points.
     last_10 = df.tail(10).copy()
 
     # --- 3. LIVE PRICE FETCH ---
@@ -48,7 +85,6 @@ def predict_next_hour():
         else:
             loc_t = t.astimezone(ny_tz)
         
-        # ΒΑΛΕ ΑΥΤΟ: %a σημαίνει Ημέρα (π.χ. Mon, Tue). Το .upper() το κάνει κεφαλαία.
         history_times.append(loc_t.strftime('%a %H:%M').upper())
 
     # --- 5. PREPARE FEATURES FOR LSTM ---
@@ -80,7 +116,10 @@ def predict_next_hour():
     except Exception as e:
         return {"status": "error", "message": f"Inference failed: {str(e)}"}
 
-    # --- 7. FINAL PAYLOAD ---
+    # --- 7. CALCULATE MARKET STATUS & NEXT HOUR ---
+    market_status, forecast_time = get_market_info()
+
+    # --- 8. FINAL PAYLOAD ---
     diff = float(actual_prediction - live_price)
     direction = "UP" if diff > 0 else "DOWN"
     sentiment = float(df['sentiment_score'].iloc[-1])
@@ -94,6 +133,8 @@ def predict_next_hour():
         "sentiment_score": round(sentiment, 2),
         "history": history_prices,
         "history_times": history_times,
+        "market_status": market_status,
+        "forecast_time": forecast_time,
         "status": "success"
     }
 
