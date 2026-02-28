@@ -33,7 +33,14 @@ The core prediction engine is powered by a **Long Short-Term Memory (LSTM)** neu
 
 **1. Start the Backend (Terminal 1)**
 ```bash
-cd backend
+cd nvda_predictor
 pip install -r requirements.txt
-# Note: You must add your NEWS_API_KEY to a .env file in the backend root
-uvicorn main:app --reload
+```
+- Create a `.env` file in the `nvda_predictor` directory and add your `NEWS_API_KEY`:
+  ```
+  NEWS_API_KEY=your_api_key_here
+  ```
+- Then start the backend server:
+  ```bash
+  uvicorn main:app --reload
+  ```
