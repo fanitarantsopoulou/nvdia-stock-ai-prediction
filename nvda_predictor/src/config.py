@@ -11,4 +11,3 @@ TIME_INTERVAL = "1h"    # Granularity per hour (matches the news flow)
 
 # API Keys
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
-# ALPACA_API_KEY = os.getenv("ALPACA_API_KEY") # For future use

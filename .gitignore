@@ -8,5 +8,5 @@ __pycache__/
 env/
 venv/
 
-# Secret keys
+# API keys
 .env
