@@ -13,7 +13,7 @@ print("[*] Initializing NVDA AI Pipeline...")
 
 try:
     # Now we import 'model' directly because 'src' is in sys.path
-    from model.train_lstm import train_model
+    from src.model.train_lstm import train_model
     train_model()
 except Exception as e:
     print(f"[!] Error: {e}")
