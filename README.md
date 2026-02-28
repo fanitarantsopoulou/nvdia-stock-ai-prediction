@@ -2,6 +2,8 @@
 
 A full-stack quantitative analysis and real-time prediction tool for NVIDIA ($NVDA) stock. It combines neural networks for time-series forecasting with Natural Language Processing (NLP) for sentiment analysis, delivering insights through a reactive, custom Cyberpunk UI.
 
+<img width="1893" height="817" alt="Screenshot 2026-02-28 at 4 46 04 PM" src="https://github.com/user-attachments/assets/46d82440-21d7-4f40-ad27-12480bca41bf" />
+
 ## 🎯 Project Objective
 The main goal is to build an end-to-end AI pipeline that doesn't solely rely on historical prices (technical analysis) but actively integrates the news factor (fundamental/sentiment analysis). The system provides an automated, short-term estimation of the stock's price direction (UP/DOWN) for the next active market hour.
 
