@@ -17,7 +17,7 @@ from model.train_lstm import StockPredictorLSTM, SEQ_LENGTH, HIDDEN_SIZE, NUM_LA
 
 
 def get_market_info():
-    """Επιστρέφει το Market Status και τον επόμενο έγκυρο χρόνο πρόβλεψης"""
+    """Returns the current market status and the next forecast time based on NYSE hours."""
     ny_tz = pytz.timezone('America/New_York')
     now = datetime.now(ny_tz)
 
@@ -28,7 +28,7 @@ def get_market_info():
 
     # 1. Weekends
     if now.weekday() >= 5: 
-        days_ahead = 7 - now.weekday() # Βρίσκει πόσες μέρες μένουν για Δευτέρα
+        days_ahead = 7 - now.weekday() # Finds how many days until Monday
         next_open = (now + timedelta(days=days_ahead)).replace(hour=9, minute=30)
         return "CLOSED_WEEKEND", next_open.strftime('%a %H:%M').upper()
 
