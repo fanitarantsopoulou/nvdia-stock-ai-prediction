@@ -31,9 +31,8 @@ The core prediction engine is powered by a **Long Short-Term Memory (LSTM)** neu
 
 ## 🚀 Local Setup
 
-**1. Start the Backend (Terminal 1)**
+**1. Install requirements**
 ```bash
-cd nvda_predictor
 pip install -r requirements.txt
 ```
 - Create a `.env` file in the `nvda_predictor` directory and add your `NEWS_API_KEY`:
