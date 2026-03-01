@@ -7,3 +7,4 @@ torch
 fastapi
 uvicorn
 pytz
+pandas-market-calendars

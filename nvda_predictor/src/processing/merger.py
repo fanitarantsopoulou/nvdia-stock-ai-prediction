@@ -1,51 +1,77 @@
-import pandas as pd
+import logging
 import os
 import sys
 
-# Append root path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# merger.py lives at src/processing/ — one level up reaches src/
+_src_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../nvda_predictor/src/
+if _src_root not in sys.path:
+    sys.path.insert(0, _src_root)
+
+import pandas as pd
 
 from ingestion.market_api import fetch_market_data
 from ingestion.news_api import fetch_news_data
 from processing.sentiment import compute_sentiment
 
+logger = logging.getLogger(__name__)
+
+
 def merge_data() -> pd.DataFrame:
-    print("[*] Starting data merge process...")
-    
+    logger.info("Starting data merge process...")
+
     # 1. Fetch Market Data
     market_df = fetch_market_data()
-    
+
     # 2. Fetch News Data
-    news_df = fetch_news_data()
-    
-    if news_df.empty:
-        print("[!] No news data to merge. Returning market data with neutral sentiment.")
-        market_df['sentiment_score'] = 0.0
+    try:
+        news_df = fetch_news_data()
+    except Exception as exc:
+        logger.warning("News fetch failed (%s). Proceeding with neutral sentiment.", exc)
+        market_df["sentiment_score"] = 0.0
         return market_df
-        
+
+    if news_df.empty:
+        logger.warning("No news data to merge. Returning market data with neutral sentiment.")
+        market_df["sentiment_score"] = 0.0
+        return market_df
+
     # 3. Compute Sentiment
-    news_df = compute_sentiment(news_df)
-    
+    try:
+        news_df = compute_sentiment(news_df)
+    except Exception as exc:
+        logger.warning("Sentiment computation failed (%s). Falling back to neutral sentiment.", exc)
+        market_df["sentiment_score"] = 0.0
+        return market_df
+
     # 4. Aggregate Sentiment by Hour
-    # Align the random news timestamps to the start of the hour to match market data
-    news_df.index = news_df.index.floor('h')
-    
-    # Calculate the average sentiment if multiple articles exist in the same hour
-    hourly_sentiment = news_df.groupby(news_df.index)['sentiment_score'].mean().to_frame()
-    
+    # floor() aligns article timestamps to the start of each hour to match
+    # the hourly candle index of market_df.
+    news_df.index = news_df.index.floor("h")
+    hourly_sentiment = news_df.groupby(news_df.index)["sentiment_score"].mean().to_frame()
+
     # 5. Join Datasets
-    # Left join ensures we keep all market data rows. 
-    # Hours with no news will get NaN, which we fill with 0.0 (neutral).
-    merged_df = market_df.join(hourly_sentiment, how='left')
-    merged_df['sentiment_score'] = merged_df['sentiment_score'].fillna(0.0)
-    
+    # Left join keeps all market rows. Hours with no news get NaN.
+    # Fallback: use the mean sentiment of the available news window rather than
+    # neutral 0.0, so older candles are not all penalised equally.
+    merged_df = market_df.join(hourly_sentiment, how="left")
+    sentiment_fallback = float(hourly_sentiment["sentiment_score"].mean()) if not hourly_sentiment.empty else 0.0
+    merged_df["sentiment_score"] = merged_df["sentiment_score"].fillna(sentiment_fallback)
+    logger.info("Sentiment fallback value applied to unmatched candles: %.4f", sentiment_fallback)
+
+    logger.info(
+        "Merge complete. Rows: %d  Sentiment coverage: %.1f%%",
+        len(merged_df),
+        100 * (merged_df["sentiment_score"] != 0.0).mean(),
+    )
+
     return merged_df
 
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
         final_df = merge_data()
-        print("\n[*] Merge successful. Final Dataset Preview:")
-        # Print the last 5 rows to see the most recent data
+        logger.info("Merge successful. Final dataset preview:")
         print(final_df.tail())
     except Exception as e:
-        print(f"[!] Error during merge: {e}")
+        logger.error("Error during merge: %s", e)

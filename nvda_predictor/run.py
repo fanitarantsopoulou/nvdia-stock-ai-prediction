@@ -1,21 +1,20 @@
-import sys
+import logging
 import os
+import sys
 
-# Get absolute paths
-project_root = os.path.dirname(os.path.abspath(__file__))
-src_path = os.path.join(project_root, "src")
+nvda_root = os.path.dirname(os.path.abspath(__file__))
+src_root  = os.path.join(nvda_root, "src")
+if src_root not in sys.path:
+    sys.path.insert(0, src_root)
 
-# Add 'src' to the very top of sys.path
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
+from model.train_lstm import train_model
 
-print("[*] Initializing NVDA AI Pipeline...")
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    logger = logging.getLogger(__name__)
 
-try:
-    # Now we import 'model' directly because 'src' is in sys.path
-    from src.model.train_lstm import train_model
-    train_model()
-except Exception as e:
-    print(f"[!] Error: {e}")
-    import traceback
-    traceback.print_exc()
+    logger.info("Initializing NVDA AI Pipeline...")
+    try:
+        train_model()
+    except Exception as e:
+        logger.exception("Pipeline failed: %s", e)
